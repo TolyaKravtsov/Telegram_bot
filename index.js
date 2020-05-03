@@ -4,6 +4,8 @@ const travelPayOutsToken = 'da8dc06edc902027201164d412a9947e';
 const baseURL = 'http://api.travelpayouts.com/'
 const debug = require('./debug');
 const axios = require('axios');
+let CityObject = {};
+let FindedCity;
 
 console.log("Bot has been started");
 
@@ -27,7 +29,7 @@ bot.onText(/\/start/, msg => {
         }
     });
 })
-
+bot.on("polling_error", (err) => console.log(err));
 bot.on('message', msg => {
 
     const chatId = msg.chat.id;
@@ -68,35 +70,54 @@ bot.on('message', msg => {
             break;
         case 'Ввести город отправления':
             bot.sendMessage(chatId, 'Введите город отправления')
-            let departureCity;
-            let allCity = [];
-            let IATACityCode = [];
             axios.get(`${baseURL}data/ru/cities.json`)
                 .then(response => {
-                    response.data.map((element) => {
-                        allCity.push(element["name"]);
-                        IATACityCode.push(element["code"])
-                    }).then(
-                        bot.on('message', msg => {
-                            departureCity = allCity.find(item => item === msg.text)
-                            departureCity ? bot.sendMessage(chatId, "Город записан") : bot.sendMessage(chatId, "Город не найден");
+                    response.data.map((element, index) => {
+                            CityObject = {
+                                ...CityObject,
+                                [element["name"]]: [element["code"]],
+                            }
 
-                        })
-                    )
-                    bot.sendMessage(chatId, '...', {
-                        reply_markup: {
-                            keyboard: [
-                                ['Найти рейсы в заданном городе'],
-                            ]
                         }
-                    })
+                    )
+                        .then(
+                            bot.on('message', msg => {
 
+                                FindedCity = CityObject[msg.text];
+                                console.log(FindedCity)
+
+                                if (FindedCity) {
+                                    bot.sendMessage(chatId, "Город записан");
+                                }
+                                if (FindedCity === undefined) {
+                                    FindedCity = 'Минск'
+                                }
+                                bot.sendMessage(chatId, '...', {
+                                    reply_markup: {
+                                        keyboard: [
+                                            ['Найти рейсы в заданном городе'],
+                                        ]
+                                    }
+                                })
+                            }))
                 })
                 .catch(error => {
                     console.log(error);
                 })
             break;
         case "Найти рейсы в заданном городе":
+            axios.get(`${baseURL}v1/city-directions?origin=${FindedCity}&currency=usd&token=${travelPayOutsToken}`)
+                .then(response => {
+                        Object.keys(response.data.data).map((element) => {
+                            element = FindedCity;
+                        })
+                        let data = JSON.stringify(response.data.data, null, '\t');
+                        bot.sendMessage(chatId, data);
+                        console.log(data);
+                    }
+                ).catch(error => {
+                console.log(error);
+            })
     }
 
 });
