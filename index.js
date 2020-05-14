@@ -133,7 +133,6 @@ bot.on('message', msg => {
                 console.log(error);
             })
             break;
-
         case "Выбрать интересующий вас рейс":
             bot.sendMessage(chatId, 'Введите краткое название направления(3 буквы)')
 
@@ -156,6 +155,7 @@ bot.on('message', msg => {
                                 console.log(result);
                                 bot.sendMessage(chatId, ParseTown);
                                 console.log("успешное добавление")
+                                client.close();
                             })
 
                         })
@@ -163,8 +163,29 @@ bot.on('message', msg => {
                 })
                 console.log(FindedCityFromTown);
             })
-
             break;
-    }
+        case "Мои забронированные рейсы":
 
+            bot.sendMessage(chatId, 'Вывожу ваши рейсы')
+            mongoClient.connect((err, client) => {
+                if (err) {
+                    return console.log(err);
+                }
+                let convertedResponse
+                const db = client.db("Airport");
+                const collection = db.collection("flight");
+                let data = collection.find().toArray((err, results) => {
+                    convertedResponse = Object.assign({}, results);
+                    console.log(convertedResponse);
+                });
+                setTimeout(() => {
+                    if (convertedResponse) {
+                        let StringifyResponse = JSON.stringify(convertedResponse, null, '\t');
+                        bot.sendMessage(chatId, StringifyResponse);
+                    }
+                }, 2000)
+
+            })
+
+    }
 });
